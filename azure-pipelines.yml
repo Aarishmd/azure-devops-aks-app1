@@ -1,39 +1,51 @@
-# Docker
-# Build and push an image to Azure Container Registry
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
-
 trigger:
 - main
 
-pool:
-  vmImage: 'ubuntu-latest'
+resources:
+- repo: self
 
-steps:
-- checkout: self
-  displayName: 'Checkout main branch'
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: '160de157-172e-4e27-b957-bc1bd0ab751b'
+  imageRepository: 'app1nginx'
+  containerRegistry: 'aksdevopapp1.azurecr.io'
+  tag: '$(Build.BuildId)'
 
-# Fetch Dockerfile from master branch
-- checkout: 
-    repository: self
-    ref: refs/heads/master
-    path: master
-  displayName: 'Checkout master branch for Dockerfile'
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
 
-# Print Dockerfile for verification
-- script: |
-    echo "Contents of the Dockerfile from master branch:"
-    cat master/Dockerfile
-  displayName: 'Print Dockerfile from master branch'
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      displayName: 'Checkout main branch'
 
-# Build Docker image
-- task: Docker@2
-  inputs:
-    command: build
-    Dockerfile: '$(Build.SourcesDirectory)/master/Dockerfile'
-    containerRegistry: 'yourContainerRegistry'
-    repository: 'yourRepository'
-    tags: 'latest'
+    # Checkout the master branch to get the Dockerfile
+    - checkout: self
+      displayName: 'Checkout master branch'
+      persistCredentials: true
+      clean: true
+      fetchDepth: 0
+      submodules: true
+      path: master
 
+    - script: |
+        echo "Contents of the Dockerfile from master branch:"
+        cat master/Dockerfile
+      displayName: 'Print Dockerfile from master branch'
 
-
-
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: '$(Build.SourcesDirectory)/master/Dockerfile'
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
