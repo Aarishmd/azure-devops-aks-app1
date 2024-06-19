@@ -18,8 +18,7 @@ variables:
   tag: '$(Build.BuildId)'
   imagePullSecret: 'aksdevopapp15390a41c-auth'
   imagePullPolicy: 'Always'
-  namespace: $(k8sNamespace)
-
+  namespace: 'default'
   # Agent VM image name
   vmImageName: 'ubuntu-latest'
 
@@ -68,7 +67,7 @@ stages:
             inputs:
               action: createSecret
               secretName: $(imagePullSecret)
-              namespace: $(k8sNamespace)
+              namespace: 'default'
               dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
 
           - task: KubernetesManifest@0
@@ -80,7 +79,7 @@ stages:
                 $(Pipeline.Workspace)/manifests/service.yml
               imagePullSecrets: |
                 $(imagePullSecret)
-              namespace: $(k8sNamespace)
+              namespace: 'default'
               containers: |
                 $(containerRegistry)/$(imageRepository):$(tag)
 
@@ -109,14 +108,14 @@ stages:
             inputs:
               action: createSecret
               secretName: $(imagePullSecret)
-              namespace: $(k8sNamespaceForPR)
+              namespace: 'default'
               dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
 
           - task: KubernetesManifest@0
             displayName: Deploy to the new namespace in the Kubernetes cluster
             inputs:
               action: deploy
-              namespace: $(k8sNamespaceForPR)
+              namespace: 'default'
               manifests: |
                 $(Pipeline.Workspace)/manifests/deployment.yml
                 $(Pipeline.Workspace)/manifests/service.yml
@@ -131,7 +130,7 @@ stages:
             continueOnError: true
             inputs:
               command: get
-              namespace: $(k8sNamespaceForPR)
+              namespace: 'default'
               arguments: svc
               outputFormat: jsonpath='http://{.items[0].status.loadBalancer.ingress[0].ip}:{.items[0].spec.ports[0].port}'
 
